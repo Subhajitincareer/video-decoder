@@ -31,14 +31,84 @@
             background-color: var(--bg-color);
             color: var(--text-main);
             min-height: 100vh;
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden;
+        }
+
+        .dashboard {
             display: flex;
+            height: 100vh;
+            width: 100vw;
+        }
+
+        .sidebar {
+            width: 250px;
+            background: var(--container-bg);
+            border-right: 1px solid var(--border-color);
+            padding: 2rem 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .main-content {
+            flex: 1;
+            padding: 2rem;
+            overflow-y: auto;
+            background: var(--bg-color);
+        }
+
+        /* Mobile specific styles */
+        .mobile-header {
+            display: none;
             align-items: center;
-            justify-content: center;
+            justify-content: space-between;
+            padding: 1rem 1.5rem;
+            background: var(--container-bg);
+            border-bottom: 1px solid var(--border-color);
+        }
+        .mobile-header-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--text-main);
+        }
+        .mobile-toggle {
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: var(--text-main);
+        }
+
+        @media (max-width: 768px) {
+            .dashboard {
+                flex-direction: column;
+            }
+            .sidebar {
+                width: 100%;
+                border-right: none;
+                border-bottom: 1px solid var(--border-color);
+                padding: 1rem 1.5rem;
+                display: none;
+            }
+            .sidebar.mobile-open {
+                display: flex;
+            }
+            .mobile-header {
+                display: flex;
+            }
+            .main-content {
+                padding: 1rem;
+            }
+            .sidebar h2 {
+                display: none; /* Hide duplicate title on mobile */
+            }
         }
 
         .container {
             width: 100%;
-            max-width: 500px;
+            max-width: 600px;
+            margin: 0 auto;
             padding: 2.5rem;
             background: var(--container-bg);
             border-radius: 16px;
@@ -234,19 +304,147 @@
             height: 16px;
         }
 
+        /* Tabs CSS */
+        .tabs {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        
+        .tab-btn {
+            background: none;
+            border: none;
+            font-size: 0.95rem;
+            font-weight: 500;
+            color: var(--text-muted);
+            cursor: pointer;
+            padding: 0.75rem 1rem;
+            border-radius: 8px;
+            transition: all 0.2s ease;
+            text-align: left;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+        
+        .tab-btn:hover {
+            color: var(--text-main);
+            background: var(--bg-color);
+        }
+        
+        .tab-btn.active {
+            color: var(--accent-color);
+            background: #e2e8f0;
+            font-weight: 600;
+        }
+
+        .tab-content {
+            display: none;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .image-preview-container {
+            margin-top: 1.5rem;
+            width: 100%;
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid var(--border-color);
+            display: none;
+            background: var(--bg-color);
+        }
+
+        .image-preview-container.active {
+            display: block;
+        }
+
+        #image-preview {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        .editor-controls {
+            padding: 1rem;
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            border-top: 1px solid var(--border-color);
+        }
+        
+        .file-list {
+            margin-top: 1rem;
+            text-align: left;
+            font-size: 0.85rem;
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            display: none;
+        }
+        .file-list.active {
+            display: block;
+        }
+        .file-list-item {
+            padding: 0.5rem 1rem;
+            border-bottom: 1px solid var(--border-color);
+            color: var(--text-muted);
+        }
+        .file-list-item:last-child {
+            border-bottom: none;
+        }
     </style>
 </head>
 <body>
 
-    <div class="container">
-        <h1>Video Decoder</h1>
-        <p class="subtitle">Extract frames and audio from MP4 files</p>
+<div class="dashboard">
+    <div class="mobile-header">
+        <div class="mobile-header-title">Video App</div>
+        <button class="mobile-toggle" onclick="toggleSidebar()">
+            <i data-lucide="menu" width="24" height="24"></i>
+        </button>
+    </div>
+
+    <div class="sidebar" id="sidebar">
+        <h2 style="font-size: 1.25rem; font-weight: 600; margin-bottom: 2rem; padding: 0 0.5rem; color: var(--text-main);">Video App</h2>
+        
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab('extractor')">
+                <i data-lucide="video" width="18" height="18"></i> Video Decoder
+            </button>
+            <button class="tab-btn" onclick="switchTab('editor')">
+                <i data-lucide="image" width="18" height="18"></i> Image Editor
+            </button>
+            <button class="tab-btn" onclick="switchTab('zip')">
+                <i data-lucide="archive" width="18" height="18"></i> Zip Extractor
+            </button>
+        </div>
+    </div>
+    
+    <div class="main-content">
+        <div class="container">
+            <!-- Extractor Tab -->
+            <div id="extractor-tab" class="tab-content active">
+                <h1>Video Decoder</h1>
+                <p class="subtitle">Extract frames and audio from MP4 files</p>
 
         <div class="drop-zone" id="drop-zone">
             <i data-lucide="upload-cloud" width="36" height="36"></i>
             <p>Upload a video</p>
             <span>Drag & drop or click to browse</span>
             <input type="file" id="file-input" accept=".mp4">
+        </div>
+
+        <div class="form-group" style="margin-bottom: 1.5rem; text-align: left;">
+            <label for="extraction-type" style="display: block; font-weight: 500; margin-bottom: 0.5rem; color: var(--text-main);">Extraction Type:</label>
+            <select id="extraction-type" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: 8px; font-family: inherit; font-size: 1rem; color: var(--text-main); background: white;">
+                <option value="both">Both (Audio & Frames)</option>
+                <option value="audio">Audio Only</option>
+                <option value="frames">Video Frames Only</option>
+            </select>
         </div>
 
         <div class="status-container" id="status-container">
@@ -268,12 +466,97 @@
                 </a>
             </div>
         </div>
-    </div>
+        </div> <!-- Closing extractor-tab -->
+
+        <!-- Editor Tab -->
+        <div id="editor-tab" class="tab-content">
+            <h1>Image Editor</h1>
+            <p class="subtitle">View and manipulate image frames</p>
+            
+            <div class="form-group" style="margin-bottom: 1.5rem; text-align: left;">
+                <label for="editor-tool-select" style="display: block; font-weight: 500; margin-bottom: 0.5rem; color: var(--text-main);">Select Tool:</label>
+                <select id="editor-tool-select" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: 8px; font-family: inherit; font-size: 1rem; color: var(--text-main); background: white;">
+                    <option value="view">View Frame</option>
+                    <option value="extract">Select & Extract Specific Frame</option>
+                </select>
+            </div>
+
+            <div class="drop-zone" id="editor-drop-zone">
+                <i data-lucide="image" width="36" height="36"></i>
+                <p>Upload a frame</p>
+                <span>Drag & drop or click to browse images</span>
+                <input type="file" id="editor-file-input" accept="image/jpeg, image/png, image/webp" multiple>
+            </div>
+
+            <div class="image-preview-container" id="image-preview-container">
+                <div id="thumbnail-gallery" style="display: flex; gap: 10px; overflow-x: auto; padding: 10px; border-bottom: 1px solid var(--border-color);"></div>
+                <img id="image-preview" src="" alt="Frame preview" style="max-height: 400px; object-fit: contain; width: 100%;">
+                <div class="editor-controls">
+                    <p class="status-message">Select a frame from the thumbnails above to view.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Zip Extractor Tab -->
+        <div id="zip-tab" class="tab-content">
+            <h1>Zip Extractor</h1>
+            <p class="subtitle">Upload a ZIP file containing images to extract them</p>
+
+            <div class="form-group" style="margin-bottom: 1.5rem; text-align: left;">
+                <label for="zip-extract-mode" style="display: block; font-weight: 500; margin-bottom: 0.5rem; color: var(--text-main);">Extraction Mode:</label>
+                <select id="zip-extract-mode" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: 8px; font-family: inherit; font-size: 1rem; color: var(--text-main); background: white;">
+                    <option value="all">Extract All Frames</option>
+                    <option value="specific">Extract Specific Frame Only</option>
+                </select>
+            </div>
+
+            <div class="drop-zone" id="zip-drop-zone">
+                <i data-lucide="archive" width="36" height="36"></i>
+                <p>Upload a ZIP file</p>
+                <span>Drag & drop or click to browse</span>
+                <input type="file" id="zip-file-input" accept=".zip">
+            </div>
+            
+            <div class="status-container" id="zip-status-container">
+                <div class="status-title" id="zip-status-title">
+                    <div class="spinner" id="zip-spinner"></div>
+                    <span id="zip-status-heading">Processing...</span>
+                </div>
+                <p class="status-message" id="zip-status-message">Uploading file...</p>
+                
+                <div class="file-list" id="zip-file-list"></div>
+            </div>
+        </div>
+
+        </div> <!-- /container -->
+    </div> <!-- /main-content -->
+</div> <!-- /dashboard -->
 
     <script>
         // Initialize Lucide Icons
         lucide.createIcons();
 
+        // Mobile Sidebar Toggle
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            sidebar.classList.toggle('mobile-open');
+        }
+
+        // Tab Switching Logic
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            
+            event.target.closest('.tab-btn').classList.add('active');
+            document.getElementById(`${tabName}-tab`).classList.add('active');
+            
+            // Auto-close sidebar on mobile after selection
+            if(window.innerWidth <= 768) {
+                document.getElementById('sidebar').classList.remove('mobile-open');
+            }
+        }
+
+        // Extractor Logic
         const dropZone = document.getElementById('drop-zone');
         const fileInput = document.getElementById('file-input');
         const statusContainer = document.getElementById('status-container');
@@ -350,10 +633,12 @@
         }
 
         function uploadAndProcess(file) {
-            showStatus('Processing...', 'Extracting audio and frames...');
+            showStatus('Processing...', 'Extracting audio and/or frames...');
             
+            const extractionType = document.getElementById('extraction-type').value;
             const formData = new FormData();
             formData.append('file', file);
+            formData.append('extraction_type', extractionType);
 
             fetch('/upload', {
                 method: 'POST',
@@ -363,8 +648,19 @@
             .then(res => {
                 if (res.status === 200) {
                     showStatus('Complete', 'Files extracted successfully.', 'success');
-                    btnDownloadAudio.href = `/download/${res.body.session_id}/audio`;
-                    btnDownloadFrames.href = `/download/${res.body.session_id}/frames`;
+                    
+                    btnDownloadAudio.style.display = 'none';
+                    btnDownloadFrames.style.display = 'none';
+                    
+                    if (res.body.extraction_type === 'audio' || res.body.extraction_type === 'both') {
+                        btnDownloadAudio.href = `/download/${res.body.session_id}/audio`;
+                        btnDownloadAudio.style.display = 'flex';
+                    }
+                    if (res.body.extraction_type === 'frames' || res.body.extraction_type === 'both') {
+                        btnDownloadFrames.href = `/download/${res.body.session_id}/frames`;
+                        btnDownloadFrames.style.display = 'flex';
+                    }
+                    
                     downloadActions.classList.add('active');
                 } else {
                     showStatus('Failed', res.body.error || 'An unknown error occurred', 'error');
@@ -372,6 +668,173 @@
             })
             .catch(error => {
                 showStatus('Error', 'Network error or server unavailable.', 'error');
+                console.error(error);
+            });
+        }
+
+        // Editor Logic
+        const editorDropZone = document.getElementById('editor-drop-zone');
+        const editorFileInput = document.getElementById('editor-file-input');
+        const imagePreviewContainer = document.getElementById('image-preview-container');
+        const imagePreview = document.getElementById('image-preview');
+
+        editorDropZone.addEventListener('click', () => editorFileInput.click());
+
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            editorDropZone.addEventListener(eventName, preventDefaults, false);
+        });
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            editorDropZone.addEventListener(eventName, () => editorDropZone.classList.add('dragover'), false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            editorDropZone.addEventListener(eventName, () => editorDropZone.classList.remove('dragover'), false);
+        });
+
+        editorDropZone.addEventListener('drop', (e) => {
+            let dt = e.dataTransfer;
+            let files = dt.files;
+            handleEditorFiles(files);
+        });
+
+        editorFileInput.addEventListener('change', function() {
+            handleEditorFiles(this.files);
+        });
+
+        function handleEditorFiles(files) {
+            if (files.length === 0) return;
+            
+            const gallery = document.getElementById('thumbnail-gallery');
+            gallery.innerHTML = ''; // Clear previous
+            imagePreviewContainer.classList.add('active');
+            editorDropZone.style.display = 'none';
+
+            let firstFileLoaded = false;
+
+            Array.from(files).forEach((file, index) => {
+                if (!file.type.startsWith('image/')) return;
+
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const img = document.createElement('img');
+                    img.src = e.target.result;
+                    img.style.height = '60px';
+                    img.style.cursor = 'pointer';
+                    img.style.borderRadius = '4px';
+                    img.style.border = '2px solid transparent';
+                    
+                    img.onclick = () => {
+                        imagePreview.src = e.target.result;
+                        document.querySelectorAll('#thumbnail-gallery img').forEach(i => i.style.borderColor = 'transparent');
+                        img.style.borderColor = 'var(--primary-color)';
+                    };
+
+                    gallery.appendChild(img);
+
+                    if (!firstFileLoaded) {
+                        img.click(); // Auto-select first image
+                        firstFileLoaded = true;
+                    }
+                }
+                reader.readAsDataURL(file);
+            });
+        }
+
+        // Zip Extractor Logic
+        const zipDropZone = document.getElementById('zip-drop-zone');
+        const zipFileInput = document.getElementById('zip-file-input');
+        const zipStatusContainer = document.getElementById('zip-status-container');
+        const zipStatusHeading = document.getElementById('zip-status-heading');
+        const zipStatusMessage = document.getElementById('zip-status-message');
+        const zipSpinner = document.getElementById('zip-spinner');
+        const zipFileList = document.getElementById('zip-file-list');
+
+        zipDropZone.addEventListener('click', () => zipFileInput.click());
+
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            zipDropZone.addEventListener(eventName, preventDefaults, false);
+        });
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            zipDropZone.addEventListener(eventName, () => zipDropZone.classList.add('dragover'), false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            zipDropZone.addEventListener(eventName, () => zipDropZone.classList.remove('dragover'), false);
+        });
+
+        zipDropZone.addEventListener('drop', (e) => {
+            let dt = e.dataTransfer;
+            let files = dt.files;
+            handleZipFiles(files);
+        });
+
+        zipFileInput.addEventListener('change', function() {
+            handleZipFiles(this.files);
+        });
+
+        function handleZipFiles(files) {
+            if (files.length === 0) return;
+            const file = files[0];
+            
+            if (!file.name.toLowerCase().endsWith('.zip')) {
+                showZipStatus('Error', 'Please upload a valid .zip file.', 'error');
+                return;
+            }
+
+            uploadZipAndProcess(file);
+        }
+
+        function showZipStatus(heading, message, state = 'processing') {
+            zipStatusContainer.classList.add('active');
+            zipStatusHeading.textContent = heading;
+            zipStatusMessage.textContent = message;
+            zipFileList.classList.remove('active');
+            zipFileList.innerHTML = '';
+            
+            zipStatusHeading.className = 'status-title';
+            zipSpinner.style.display = 'none';
+
+            if (state === 'processing') {
+                zipSpinner.style.display = 'block';
+            } else if (state === 'success') {
+                zipStatusHeading.classList.add('success-text');
+            } else if (state === 'error') {
+                zipStatusHeading.classList.add('error-text');
+            }
+        }
+
+        function uploadZipAndProcess(file) {
+            showZipStatus('Processing...', 'Extracting files from ZIP...');
+            
+            const formData = new FormData();
+            formData.append('file', file);
+
+            fetch('/extract-zip', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json().then(data => ({ status: response.status, body: data })))
+            .then(res => {
+                if (res.status === 200) {
+                    showZipStatus('Complete', `Extracted ${res.body.files.length} files successfully.`, 'success');
+                    
+                    if (res.body.files && res.body.files.length > 0) {
+                        res.body.files.forEach(fileName => {
+                            const item = document.createElement('div');
+                            item.className = 'file-list-item';
+                            item.textContent = fileName;
+                            zipFileList.appendChild(item);
+                        });
+                        zipFileList.classList.add('active');
+                    }
+                } else {
+                    showZipStatus('Failed', res.body.error || 'An unknown error occurred', 'error');
+                }
+            })
+            .catch(error => {
+                showZipStatus('Error', 'Network error or server unavailable.', 'error');
                 console.error(error);
             });
         }

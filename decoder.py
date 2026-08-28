@@ -5,10 +5,11 @@ import json
 from pathlib import Path
 import imageio_ffmpeg
 
-def decode_video_and_audio(input_file="input.mp4", output_dir="output"):
+def decode_video_and_audio(input_file="input.mp4", output_dir="output", extraction_type="both"):
     """
     Decodes video into frames and extracts audio into a WAV file.
     Saves timestamps for both to allow synchronization.
+    extraction_type can be "audio", "frames", or "both".
     """
     if not os.path.exists(input_file):
         msg = f"Error: {input_file} not found. Please provide a valid MP4 file."
@@ -24,56 +25,61 @@ def decode_video_and_audio(input_file="input.mp4", output_dir="output"):
     
     metadata = {
         "frames": [],
-        "audio": {
+        "audio": {}
+    }
+
+    if extraction_type in ["audio", "both"]:
+        metadata["audio"] = {
             "file": str(audio_path),
             "sample_rate": 16000,
             "channels": 1
         }
-    }
 
     print(f"--- Starting Decoding Process for {input_file} ---")
 
     # 1. Video Decoder (OpenCV)
-    print("\n[1/2] Decoding Video Streams -> Frames...")
-    video = cv2.VideoCapture(input_file)
-    
-    # Get FPS to calculate exact time or we can use CAP_PROP_POS_MSEC
-    fps = video.get(cv2.CAP_PROP_FPS)
-    print(f"Video FPS: {fps}")
-
-    frame_id = 0
-    while True:
-        ok, frame = video.read()
-        if not ok:
-            break
-
-        # Get timestamp in milliseconds and convert to seconds
-        timestamp_ms = video.get(cv2.CAP_PROP_POS_MSEC)
-        timestamp_sec = timestamp_ms / 1000.0
-
-        frame_filename = f"frame_{frame_id:06d}.jpg"
-        frame_filepath = frames_dir / frame_filename
+    if extraction_type in ["frames", "both"]:
+        print("\n[1/2] Decoding Video Streams -> Frames...")
+        video = cv2.VideoCapture(input_file)
         
-        # Save frame
-        cv2.imwrite(str(frame_filepath), frame)
-        
-        # Save metadata
-        metadata["frames"].append({
-            "frame_id": frame_id,
-            "filename": frame_filename,
-            "timestamp_sec": round(timestamp_sec, 3)
-        })
+        # Get FPS to calculate exact time or we can use CAP_PROP_POS_MSEC
+        fps = video.get(cv2.CAP_PROP_FPS)
+        print(f"Video FPS: {fps}")
 
-        if frame_id % 100 == 0:
-            print(f"Extracted {frame_id} frames...", end="\r")
+        frame_id = 0
+        while True:
+            ok, frame = video.read()
+            if not ok:
+                break
 
-        frame_id += 1
+            # Get timestamp in milliseconds and convert to seconds
+            timestamp_ms = video.get(cv2.CAP_PROP_POS_MSEC)
+            timestamp_sec = timestamp_ms / 1000.0
 
-    video.release()
-    print(f"\nTotal video frames extracted: {frame_id}")
+            frame_filename = f"frame_{frame_id:06d}.jpg"
+            frame_filepath = frames_dir / frame_filename
+            
+            # Save frame
+            cv2.imwrite(str(frame_filepath), frame)
+            
+            # Save metadata
+            metadata["frames"].append({
+                "frame_id": frame_id,
+                "filename": frame_filename,
+                "timestamp_sec": round(timestamp_sec, 3)
+            })
+
+            if frame_id % 100 == 0:
+                print(f"Extracted {frame_id} frames...", end="\r")
+
+            frame_id += 1
+
+        video.release()
+        print(f"\nTotal video frames extracted: {frame_id}")
 
     # 2. Audio Decoder (FFmpeg)
-    print("\n[2/2] Decoding Audio Stream -> PCM WAV...")
+    if extraction_type in ["audio", "both"]:
+        print("\n[2/2] Decoding Audio Stream -> PCM WAV...")
     
     # ffmpeg -i input.mp4 -vn -ac 1 -ar 16000 -c:a pcm_s16le audio.wav -y
     ffmpeg_exe = imageio_ffmpeg.get_ffmpeg_exe()
@@ -88,17 +94,18 @@ def decode_video_and_audio(input_file="input.mp4", output_dir="output"):
         str(audio_path)
     ]
     
-    try:
-        subprocess.run(ffmpeg_cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        print(f"Audio extracted successfully to {audio_path}")
-    except subprocess.CalledProcessError as e:
-        msg = f"Error extracting audio: {e}. Make sure FFmpeg is installed."
-        print(msg)
-        return False, msg
-    except FileNotFoundError:
-        msg = "Error: FFmpeg is not installed or not in your system's PATH. Please install FFmpeg to extract audio."
-        print(msg)
-        return False, msg
+    if extraction_type in ["audio", "both"]:
+        try:
+            subprocess.run(ffmpeg_cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            print(f"Audio extracted successfully to {audio_path}")
+        except subprocess.CalledProcessError as e:
+            msg = f"Error extracting audio: {e}. Make sure FFmpeg is installed."
+            print(msg)
+            return False, msg
+        except FileNotFoundError:
+            msg = "Error: FFmpeg is not installed or not in your system's PATH. Please install FFmpeg to extract audio."
+            print(msg)
+            return False, msg
 
     # 3. Save Metadata (Timestamps)
     with open(metadata_path, 'w') as f:

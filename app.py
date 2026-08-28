@@ -2,14 +2,16 @@ from flask import Flask, render_template, request, jsonify, send_file
 import os
 import uuid
 import shutil
+import tempfile
 from werkzeug.utils import secure_filename
 from decoder import decode_video_and_audio
 
 app = Flask(__name__)
 
-# Configuration
-UPLOAD_FOLDER = 'uploads'
-OUTPUT_FOLDER = 'output'
+# Configuration (Use tempfile for Vercel Serverless compatibility)
+TEMP_DIR = tempfile.gettempdir()
+UPLOAD_FOLDER = os.path.join(TEMP_DIR, 'video_decoder_uploads')
+OUTPUT_FOLDER = os.path.join(TEMP_DIR, 'video_decoder_output')
 ALLOWED_EXTENSIONS = {'mp4'}
 
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
@@ -48,19 +50,63 @@ def upload_file():
         # Output directory for this specific file
         output_dir = os.path.join(app.config['OUTPUT_FOLDER'], session_id)
         
+        # Get extraction type
+        extraction_type = request.form.get('extraction_type', 'both')
+        
         # Run decoder
-        success, message = decode_video_and_audio(input_file=upload_path, output_dir=output_dir)
+        success, message = decode_video_and_audio(input_file=upload_path, output_dir=output_dir, extraction_type=extraction_type)
         
         if success:
             return jsonify({
                 'message': 'File successfully decoded!',
                 'output_dir': output_dir,
-                'session_id': session_id
+                'session_id': session_id,
+                'extraction_type': extraction_type
             }), 200
         else:
             return jsonify({'error': message}), 500
             
     return jsonify({'error': 'Invalid file type. Only MP4 is allowed.'}), 400
+
+@app.route('/extract-zip', methods=['POST'])
+def extract_zip():
+    if 'file' not in request.files:
+        return jsonify({'error': 'No file part'}), 400
+    
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({'error': 'No selected file'}), 400
+        
+    if file and file.filename.lower().endswith('.zip'):
+        filename = secure_filename(file.filename)
+        session_id = str(uuid.uuid4())[:8]
+        
+        # Save uploaded zip
+        upload_path = os.path.join(app.config['UPLOAD_FOLDER'], f"{session_id}_{filename}")
+        file.save(upload_path)
+        
+        # Output directory
+        output_dir = os.path.join(app.config['OUTPUT_FOLDER'], session_id, 'extracted_zip')
+        os.makedirs(output_dir, exist_ok=True)
+        
+        extracted_files = []
+        try:
+            import zipfile
+            with zipfile.ZipFile(upload_path, 'r') as zip_ref:
+                zip_ref.extractall(output_dir)
+                extracted_files = zip_ref.namelist()
+                
+            return jsonify({
+                'message': 'Zip extracted successfully!',
+                'output_dir': output_dir,
+                'files': extracted_files
+            }), 200
+        except zipfile.BadZipFile:
+            return jsonify({'error': 'The uploaded file is not a valid zip file.'}), 400
+        except Exception as e:
+            return jsonify({'error': f'Failed to extract zip: {str(e)}'}), 500
+            
+    return jsonify({'error': 'Invalid file type. Only ZIP is allowed.'}), 400
 
 @app.route('/download/<session_id>/<file_type>')
 def download_file(session_id, file_type):
