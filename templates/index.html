@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Video Decoder</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        :root {
+            --bg-color: #f8fafc;
+            --container-bg: #ffffff;
+            --border-color: #e2e8f0;
+            --border-hover: #cbd5e1;
+            --accent-color: #0f172a;
+            --accent-hover: #334155;
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+            --success-color: #059669;
+            --error-color: #dc2626;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 500px;
+            padding: 2.5rem;
+            background: var(--container-bg);
+            border-radius: 16px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+            border: 1px solid var(--border-color);
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: var(--text-main);
+        }
+
+        p.subtitle {
+            color: var(--text-muted);
+            margin-bottom: 2rem;
+            font-size: 0.9rem;
+        }
+
+        .drop-zone {
+            width: 100%;
+            height: 180px;
+            border: 1.5px dashed var(--border-color);
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            background: #fdfdfd;
+            margin-bottom: 1.5rem;
+        }
+
+        .drop-zone:hover, .drop-zone.dragover {
+            border-color: var(--accent-color);
+            background: #f8fafc;
+        }
+
+        .drop-zone i {
+            color: var(--text-muted);
+            margin-bottom: 1rem;
+            transition: transform 0.2s ease, color 0.2s ease;
+        }
+
+        .drop-zone:hover i, .drop-zone.dragover i {
+            transform: translateY(-4px);
+            color: var(--accent-color);
+        }
+
+        .drop-zone p {
+            color: var(--text-main);
+            font-weight: 500;
+            margin-bottom: 0.25rem;
+            font-size: 0.95rem;
+        }
+
+        .drop-zone span {
+            color: var(--text-muted);
+            font-size: 0.8rem;
+        }
+
+        #file-input {
+            display: none;
+        }
+
+        .status-container {
+            margin-top: 1.5rem;
+            padding: 1.25rem;
+            border-radius: 12px;
+            background: var(--bg-color);
+            border: 1px solid var(--border-color);
+            display: none;
+            text-align: left;
+        }
+
+        .status-container.active {
+            display: block;
+            animation: fadeIn 0.3s ease forwards;
+        }
+
+        .status-title {
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .progress-bar-container {
+            width: 100%;
+            height: 4px;
+            background: var(--border-color);
+            border-radius: 2px;
+            overflow: hidden;
+            margin-bottom: 0.5rem;
+            display: none;
+        }
+
+        .progress-bar {
+            height: 100%;
+            width: 0%;
+            background: var(--accent-color);
+            transition: width 0.3s ease;
+        }
+
+        .progress-bar.loading {
+            width: 30%;
+            animation: pulse 1.5s infinite ease-in-out;
+        }
+
+        .status-message {
+            color: var(--text-muted);
+            font-size: 0.8rem;
+        }
+        
+        .success-text { color: var(--success-color); }
+        .error-text { color: var(--error-color); }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes pulse {
+            0% { transform: translateX(-100%); width: 30%; }
+            100% { transform: translateX(300%); width: 30%; }
+        }
+        
+        .spinner {
+            width: 14px;
+            height: 14px;
+            border: 2px solid var(--border-color);
+            border-left-color: var(--accent-color);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            display: none;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .download-actions {
+            margin-top: 1.25rem;
+            display: none;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .download-actions.active {
+            display: flex;
+        }
+
+        .download-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            background: var(--accent-color);
+            color: white;
+            padding: 0.75rem 1rem;
+            border-radius: 8px;
+            text-decoration: none;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: background 0.2s ease;
+            border: none;
+            cursor: pointer;
+            width: 100%;
+        }
+
+        .download-btn:hover {
+            background: var(--accent-hover);
+        }
+
+        .download-btn.secondary {
+            background: white;
+            color: var(--accent-color);
+            border: 1px solid var(--border-color);
+        }
+        
+        .download-btn.secondary:hover {
+            background: var(--bg-color);
+            border-color: var(--border-hover);
+        }
+
+        .download-btn i {
+            width: 16px;
+            height: 16px;
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Video Decoder</h1>
+        <p class="subtitle">Extract frames and audio from MP4 files</p>
+
+        <div class="drop-zone" id="drop-zone">
+            <i data-lucide="upload-cloud" width="36" height="36"></i>
+            <p>Upload a video</p>
+            <span>Drag & drop or click to browse</span>
+            <input type="file" id="file-input" accept=".mp4">
+        </div>
+
+        <div class="status-container" id="status-container">
+            <div class="status-title" id="status-title">
+                <div class="spinner" id="spinner"></div>
+                <span id="status-heading">Processing...</span>
+            </div>
+            <div class="progress-bar-container" id="progress-container">
+                <div class="progress-bar" id="progress-bar"></div>
+            </div>
+            <p class="status-message" id="status-message">Uploading file...</p>
+
+            <div class="download-actions" id="download-actions">
+                <a href="#" class="download-btn" id="btn-download-audio" target="_blank">
+                    <i data-lucide="music"></i> Download Audio
+                </a>
+                <a href="#" class="download-btn secondary" id="btn-download-frames" target="_blank">
+                    <i data-lucide="image"></i> Download Frames
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Initialize Lucide Icons
+        lucide.createIcons();
+
+        const dropZone = document.getElementById('drop-zone');
+        const fileInput = document.getElementById('file-input');
+        const statusContainer = document.getElementById('status-container');
+        const statusHeading = document.getElementById('status-heading');
+        const statusMessage = document.getElementById('status-message');
+        const progressBarContainer = document.getElementById('progress-container');
+        const progressBar = document.getElementById('progress-bar');
+        const spinner = document.getElementById('spinner');
+        const downloadActions = document.getElementById('download-actions');
+        const btnDownloadAudio = document.getElementById('btn-download-audio');
+        const btnDownloadFrames = document.getElementById('btn-download-frames');
+
+        dropZone.addEventListener('click', () => fileInput.click());
+
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, preventDefaults, false);
+        });
+
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropZone.addEventListener(eventName, () => dropZone.classList.add('dragover'), false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, () => dropZone.classList.remove('dragover'), false);
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            let dt = e.dataTransfer;
+            let files = dt.files;
+            handleFiles(files);
+        });
+
+        fileInput.addEventListener('change', function() {
+            handleFiles(this.files);
+        });
+
+        function handleFiles(files) {
+            if (files.length === 0) return;
+            const file = files[0];
+            
+            if (!file.name.toLowerCase().endsWith('.mp4')) {
+                showStatus('Error', 'Please upload a valid .mp4 file.', 'error');
+                return;
+            }
+
+            uploadAndProcess(file);
+        }
+
+        function showStatus(heading, message, state = 'processing') {
+            statusContainer.classList.add('active');
+            statusHeading.textContent = heading;
+            statusMessage.textContent = message;
+            
+            statusHeading.className = 'status-title';
+            progressBarContainer.style.display = 'none';
+            progressBar.className = 'progress-bar';
+            spinner.style.display = 'none';
+            downloadActions.classList.remove('active');
+
+            if (state === 'processing') {
+                progressBarContainer.style.display = 'block';
+                progressBar.classList.add('loading');
+                spinner.style.display = 'block';
+            } else if (state === 'success') {
+                statusHeading.classList.add('success-text');
+            } else if (state === 'error') {
+                statusHeading.classList.add('error-text');
+            }
+        }
+
+        function uploadAndProcess(file) {
+            showStatus('Processing...', 'Extracting audio and frames...');
+            
+            const formData = new FormData();
+            formData.append('file', file);
+
+            fetch('/upload', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json().then(data => ({ status: response.status, body: data })))
+            .then(res => {
+                if (res.status === 200) {
+                    showStatus('Complete', 'Files extracted successfully.', 'success');
+                    btnDownloadAudio.href = `/download/${res.body.session_id}/audio`;
+                    btnDownloadFrames.href = `/download/${res.body.session_id}/frames`;
+                    downloadActions.classList.add('active');
+                } else {
+                    showStatus('Failed', res.body.error || 'An unknown error occurred', 'error');
+                }
+            })
+            .catch(error => {
+                showStatus('Error', 'Network error or server unavailable.', 'error');
+                console.error(error);
+            });
+        }
+    </script>
+</body>
+</html>
