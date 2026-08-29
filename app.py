@@ -1,5 +1,7 @@
 from flask import Flask, render_template, request, jsonify, send_file
 import os
+import threading
+import json
 import uuid
 import shutil
 import tempfile
@@ -53,20 +55,49 @@ def upload_file():
         # Get extraction type
         extraction_type = request.form.get('extraction_type', 'both')
         
-        # Run decoder
-        success, message = decode_video_and_audio(input_file=upload_path, output_dir=output_dir, extraction_type=extraction_type)
+        # Run decoder asynchronously
+        status_file = os.path.join(output_dir, "status.json")
+        os.makedirs(output_dir, exist_ok=True)
         
-        if success:
-            return jsonify({
-                'message': 'File successfully decoded!',
-                'output_dir': output_dir,
-                'session_id': session_id,
-                'extraction_type': extraction_type
-            }), 200
-        else:
-            return jsonify({'error': message}), 500
+        # Initial status
+        with open(status_file, "w") as sf:
+            json.dump({"status": "processing", "message": "Starting background task..."}, sf)
+            
+        thread = threading.Thread(
+            target=decode_video_and_audio, 
+            kwargs={
+                "input_file": upload_path, 
+                "output_dir": output_dir, 
+                "extraction_type": extraction_type,
+                "status_file": status_file
+            }
+        )
+        thread.start()
+        
+        return jsonify({
+            'message': 'Decoding started in background.',
+            'session_id': session_id,
+            'extraction_type': extraction_type
+        }), 202
             
     return jsonify({'error': 'Invalid file type. Only MP4 is allowed.'}), 400
+
+
+@app.route('/status/<session_id>')
+def check_status(session_id):
+    session_dir = secure_filename(session_id)
+    output_dir = os.path.join(app.config['OUTPUT_FOLDER'], session_dir)
+    status_file = os.path.join(output_dir, "status.json")
+    
+    if os.path.exists(status_file):
+        try:
+            with open(status_file, "r") as f:
+                data = json.load(f)
+            return jsonify(data), 200
+        except Exception as e:
+            return jsonify({'status': 'processing', 'message': 'Checking status...'}), 200
+    
+    return jsonify({'status': 'error', 'message': 'Status file not found.'}), 404
 
 @app.route('/extract-zip', methods=['POST'])
 def extract_zip():

@@ -5,15 +5,28 @@ import json
 from pathlib import Path
 import imageio_ffmpeg
 
-def decode_video_and_audio(input_file="input.mp4", output_dir="output", extraction_type="both"):
+def decode_video_and_audio(input_file="input.mp4", output_dir="output", extraction_type="both", status_file=None):
     """
     Decodes video into frames and extracts audio into a WAV file.
     Saves timestamps for both to allow synchronization.
     extraction_type can be "audio", "frames", or "both".
     """
+
+    def update_status(state, msg, error=None):
+        if status_file:
+            try:
+                data = {"status": state, "message": msg}
+                if error:
+                    data["error"] = error
+                with open(status_file, "w") as sf:
+                    json.dump(data, sf)
+            except Exception as e:
+                print(f"Failed to write status: {e}")
+
     if not os.path.exists(input_file):
         msg = f"Error: {input_file} not found. Please provide a valid MP4 file."
         print(msg)
+        update_status("error", "File not found", msg)
         return False, msg
 
     # Create output directories
@@ -36,6 +49,7 @@ def decode_video_and_audio(input_file="input.mp4", output_dir="output", extracti
         }
 
     print(f"--- Starting Decoding Process for {input_file} ---")
+    update_status("processing", "Starting decoding process...")
 
     # 1. Video Decoder (OpenCV)
     if extraction_type in ["frames", "both"]:
@@ -71,6 +85,7 @@ def decode_video_and_audio(input_file="input.mp4", output_dir="output", extracti
 
             if frame_id % 100 == 0:
                 print(f"Extracted {frame_id} frames...", end="\r")
+                update_status("processing", f"Extracted {frame_id} frames...")
 
             frame_id += 1
 
@@ -80,6 +95,7 @@ def decode_video_and_audio(input_file="input.mp4", output_dir="output", extracti
     # 2. Audio Decoder (FFmpeg)
     if extraction_type in ["audio", "both"]:
         print("\n[2/2] Decoding Audio Stream -> PCM WAV...")
+        update_status("processing", "Extracting audio...")
     
     # ffmpeg -i input.mp4 -vn -ac 1 -ar 16000 -c:a pcm_s16le audio.wav -y
     ffmpeg_exe = imageio_ffmpeg.get_ffmpeg_exe()
@@ -101,10 +117,12 @@ def decode_video_and_audio(input_file="input.mp4", output_dir="output", extracti
         except subprocess.CalledProcessError as e:
             msg = f"Error extracting audio: {e}. Make sure FFmpeg is installed."
             print(msg)
+            update_status("error", "Error extracting audio", msg)
             return False, msg
         except FileNotFoundError:
             msg = "Error: FFmpeg is not installed or not in your system's PATH. Please install FFmpeg to extract audio."
             print(msg)
+            update_status("error", "FFmpeg not found", msg)
             return False, msg
 
     # 3. Save Metadata (Timestamps)
@@ -115,6 +133,7 @@ def decode_video_and_audio(input_file="input.mp4", output_dir="output", extracti
     print(f"All data and timestamps saved in: {output_dir}")
     print(f"Check {metadata_path} for frame and audio timestamps mapping.")
     
+    update_status("completed", "File successfully decoded!")
     return True, f"Successfully processed. Saved to {output_dir}"
 
 
